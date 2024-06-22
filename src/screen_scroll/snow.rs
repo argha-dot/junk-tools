@@ -6,7 +6,7 @@ use termsize::Size;
 use crate::screen_scroll::{draw_grid, terminal_size};
 use crate::utils::{rand_choice, SNOWFLAKES};
 
-use super::{hide_cursor, set_color, show_cursor, ScrollerOptionsArgs};
+use super::{hide_cursor, set_color, ScrollerOptionsArgs};
 
 pub fn generate_snow_row<'a>(terminal_size: &Size, _density: f64) -> Vec<&'a str> {
     let mut row: Vec<&str> = vec![];
@@ -30,14 +30,13 @@ pub fn render_snow(options: ScrollerOptionsArgs) {
     let mut terminal_grid =
         vec![vec![" "; terminal_size.cols as usize]; terminal_size.rows as usize];
 
-    show_cursor();
     hide_cursor();
 
     loop {
         set_color(options.color);
 
         let density = options.density.unwrap_or(0.025);
-        let speed = options.speed.unwrap_or(200);
+        let speed = options.speed.unwrap_or(500);
 
         draw_grid(&terminal_grid);
 

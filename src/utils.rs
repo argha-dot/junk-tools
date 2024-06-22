@@ -7,4 +7,4 @@ pub fn rand_choice<T>(list: &[T]) -> &T {
 }
 
 pub const SNOWFLAKES: &'static [&'static str] = &["❅", "❆", "❄", "✳", "٭", "·"];
-
+pub const JOKE_API_URL: &'static str = "https://v2.jokeapi.dev/";

@@ -1,25 +1,19 @@
 use core::time;
 use rand;
-use termsize::Size;
 use std::thread;
+use termsize::Size;
 
-use crate::screen_scroll::draw_grid;
-use crate::screen_scroll::terminal_size;
-use crate::utils::rand_choice;
-use crate::utils::SNOWFLAKES;
+use crate::screen_scroll::{draw_grid, terminal_size};
+use crate::utils::{rand_choice, SNOWFLAKES};
 
-use super::hide_cursor;
-use super::set_colors;
-use super::show_cursor;
-use super::ScrollerOptionsArgs;
+use super::{hide_cursor, set_color, show_cursor, ScrollerOptionsArgs};
 
-pub fn generate_snow_row<'a>(terminal_size: &Size) -> Vec<&'a str> {
+pub fn generate_snow_row<'a>(terminal_size: &Size, _density: f64) -> Vec<&'a str> {
     let mut row: Vec<&str> = vec![];
     for _ in 0..terminal_size.cols {
         let char: &str;
         if rand::random::<f64>() < 0.025 {
             char = *rand_choice(SNOWFLAKES);
-
         } else {
             char = " ";
         }
@@ -40,17 +34,18 @@ pub fn render_snow(options: ScrollerOptionsArgs) {
     hide_cursor();
 
     loop {
-        if let Some(color) = options.color {
-            set_colors(color);
-        }
+        set_color(options.color);
+
+        let density = options.density.unwrap_or(0.025);
+        let speed = options.speed.unwrap_or(200);
 
         draw_grid(&terminal_grid);
 
-        let row = generate_snow_row(&terminal_size);
+        let row = generate_snow_row(&terminal_size, density);
 
         terminal_grid.insert(0, row);
         terminal_grid.pop();
 
-        thread::sleep(time::Duration::from_millis(200));
+        thread::sleep(time::Duration::from_millis(speed));
     }
 }

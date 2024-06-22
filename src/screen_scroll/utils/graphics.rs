@@ -39,26 +39,9 @@ pub enum Colors {
     BrightWhite,
 }
 
-#[derive(Display, ValueEnum, Debug, Clone, Copy)]
-pub enum TextStyle {
-    #[strum(serialize = "1")]
-    Bold,
-    #[strum(serialize = "2")]
-    Dim,
-    #[strum(serialize = "3")]
-    Italic,
-    #[strum(serialize = "4")]
-    Underline,
-    #[strum(serialize = "5")]
-    Blinking,
-    #[strum(serialize = "7")]
-    Inverse,
-    #[strum(serialize = "8")]
-    Hidde,
-    #[strum(serialize = "9")]
-    StrikeThrough,
-}
-
-pub fn set_colors(color: Colors) {
-    print!("\x1b[{}m", color);
+/// Set the color
+pub fn set_color(color: Option<Colors>) {
+    if let Some(color) = color {
+        print!("\x1b[{}m", color);
+    }
 }

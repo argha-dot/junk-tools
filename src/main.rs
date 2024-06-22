@@ -1,6 +1,8 @@
+use joke::{get_joke, JokeArgs};
 use screen_scroll::{render_matrix, render_snow, show_cursor, Scroller, Scrollers};
 
 use clap::{Parser, Subcommand};
+mod joke;
 mod screen_scroll;
 mod utils;
 
@@ -14,6 +16,9 @@ struct Cli {
 
 #[derive(Debug, Subcommand)]
 enum Commands {
+    /// Fetch a random joke from the internet
+    #[command(name = "joke")]
+    Joke(JokeArgs),
     /// Start a screensaver thingy for your terminal
     #[command(name = "scroller")]
     Scrollers(Scroller),
@@ -22,18 +27,23 @@ enum Commands {
     Cursor,
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let args = Cli::parse();
 
     match args.command {
         Commands::Cursor => {
             show_cursor();
-        },
-        Commands::Scrollers(args) => {
-            match args.r#type {
-                Scrollers::Snow => render_snow(args.options),
-                Scrollers::Matrix => render_matrix(args.options),
-            }
         }
+        Commands::Joke(args) => {
+            match get_joke(args).await {
+                Ok(()) => {}
+                Err(err) => eprintln!("[ERROR] Couldn't fetch joke. {} error", err),
+            };
+        }
+        Commands::Scrollers(args) => match args.r#type {
+            Scrollers::Snow => render_snow(args.options),
+            Scrollers::Matrix => render_matrix(args.options),
+        },
     }
 }

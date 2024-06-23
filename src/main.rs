@@ -3,6 +3,7 @@ use screen_scroll::{render_matrix, render_snow, show_cursor, Scroller, Scrollers
 
 use clap::{Parser, Subcommand};
 mod joke;
+mod manga;
 mod screen_scroll;
 mod utils;
 

@@ -538,9 +538,12 @@ dependencies = [
  "clap",
  "rand",
  "reqwest",
+ "serde",
+ "serde_json",
  "strum",
  "termsize",
  "tokio",
+ "url",
 ]
 
 [[package]]

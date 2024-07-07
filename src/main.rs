@@ -1,4 +1,5 @@
 use joke::{get_joke, JokeArgs};
+use manga::{manga_download, MangaDownArgs};
 use screen_scroll::{render_matrix, render_snow, show_cursor, Scroller, Scrollers};
 
 use clap::{Parser, Subcommand};
@@ -23,6 +24,9 @@ enum Commands {
     /// Start a screensaver thingy for your terminal
     #[command(name = "scroller")]
     Scrollers(Scroller),
+    /// Download Manga
+    #[command(name = "md")]
+    MangaDown(MangaDownArgs),
     /// Show the cursor if it's hidden
     #[command(name = "cursor")]
     Cursor,
@@ -40,6 +44,12 @@ async fn main() {
             match get_joke(args).await {
                 Ok(()) => {}
                 Err(err) => eprintln!("[ERROR] Couldn't fetch joke. {} error", err),
+            };
+        }
+        Commands::MangaDown(args) => {
+            match manga_download(args).await {
+                Ok(()) => {}
+                Err(err) => eprintln!("[ERROR] Couldn't download manga. {}", err),
             };
         }
         Commands::Scrollers(args) => match args.r#type {

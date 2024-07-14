@@ -20,20 +20,5 @@ pub async fn manga_download(args: MangaDownArgs) -> Result<(), Box<dyn Error>> {
 
     println!("{:?} {}", url.to_string(), page);
 
-    // stream::iter(urls)
-    //     .map(|url| async move {
-    //         match get_chapter_info(url.to_string()).await {
-    //             Ok((url, page)) => {
-    //                 println!("{} {page}", url.to_string());
-    //             }
-    //             Err(_) => {
-    //                 println!("error");
-    //             }
-    //         };
-    //     })
-    //     .buffer_unordered(15)
-    //     .collect::<Vec<()>>()
-    //     .await;
-
     Ok(())
 }

@@ -45,7 +45,8 @@ pub async fn get_joke(args: JokeArgs) -> Result<(), Box<dyn Error>> {
         .query_pairs_mut()
         .append_pair("format", response_format.as_str())
         .append_pair("blacklistFlags", blacklist.as_str())
-        .append_pair("type", joke_type.as_str());
+        .append_pair("type", joke_type.as_str())
+        .append_pair("amount", args.count_jokes.to_string().as_str());
 
     let client = Client::new();
     let res = client.get(api_url).send().await?.text().await?;

@@ -42,16 +42,19 @@ pub enum ResponseFormat {
 #[derive(Debug, Args)]
 pub struct JokeArgs {
     /// Custom Category, if no categories are selected,
-    /// then we take a joke is taken form any of the categories
-    #[arg(long, value_delimiter(','))]
+    /// then we take a joke is taken from any of the categories
+    #[arg(short = 'c', long, value_delimiter(','))]
     pub category: Vec<CustomCategories>,
     /// Don't show jokes containing these themes
-    #[arg(long, value_delimiter(','))]
+    #[arg(long = "bl", value_delimiter(','))]
     pub blacklist: Vec<JokeBlacklists>,
     /// Whether the joke is a single part joke or a two part joke
-    #[arg(long = "type")]
+    #[arg(short = 't', long = "type")]
     pub joke_type: Option<JokeType>,
     /// The Response Format
-    #[arg(long = "format", default_value = "txt")]
+    #[arg(short = 'f', long = "format", default_value = "txt")]
     pub response_format: ResponseFormat,
+    /// Number of jokes, defaults to 1
+    #[arg(short = 'n', long = "amount", default_value = "1")]
+    pub count_jokes: i32,
 }

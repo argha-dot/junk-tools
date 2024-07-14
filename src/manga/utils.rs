@@ -33,27 +33,6 @@ pub fn get_chapter_link(url: &Url, chapter: Option<f64>) -> Result<Url, Box<dyn 
     Ok(url_mut)
 }
 
-pub fn get_all_chapter_links(url: &Url, chapters: &Vec<f64>) -> Result<Vec<Url>, Box<dyn Error>> {
-    let url = url.clone();
-
-    let re = Regex::new(r"(?<name>[\w-]*-)(?<chapter>\d+)(?<ext>.html)")?;
-    let url_binding = url.to_string();
-
-    let urls = chapters
-        .iter()
-        .map(|ch| {
-            let cap = re.replace(
-                &url_binding.as_str(),
-                format!("${{name}}{}${{ext}}", ch.to_string()).as_str(),
-            );
-            Url::parse(cap.as_ref())
-        })
-        .into_iter()
-        .collect::<Result<Vec<_>, _>>()?;
-
-    Ok(urls)
-}
-
 pub async fn get_chapter_info(url: String) -> Result<(Url, i32), Box<dyn Error>> {
     let browser = Browser::default()?;
 

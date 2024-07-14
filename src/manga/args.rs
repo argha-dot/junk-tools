@@ -1,4 +1,5 @@
 use clap::Args;
+use url::Url;
 
 pub fn parse_chapters(chapters: Vec<String>) -> Result<Vec<f64>, String> {
     let mut parsed_chapters: Vec<f64> = vec![];
@@ -42,6 +43,6 @@ pub struct MangaDownArgs {
     #[arg(short = 'c', long = "chapter", value_delimiter = ',')]
     pub chapter: Vec<String>,
     /// The Link
-    #[arg(short = 'l', long = "link")]
-    pub link: String,
+    #[arg(short = 'l', long = "link", value_parser = clap::value_parser!(Url))]
+    pub link: Url,
 }

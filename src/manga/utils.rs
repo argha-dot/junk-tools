@@ -1,77 +1,70 @@
-use headless_chrome::Browser;
-use regex::Regex;
-use std::error::Error;
-use std::time::Duration;
-use url::Url;
+use bytes::Bytes;
+use camino::Utf8Path;
+use std::fs;
+use std::{error::Error, fs::File, io::Write};
+use zip_extensions::zip_create_from_directory;
 
-pub fn get_chapter_link(url: &Url, chapter: Option<f64>) -> Result<Url, Box<dyn Error>> {
-    let re = Regex::new(r"(?<name>[\w-]*-)(?<chapter>\d+)(?<ext>.html)")?;
-
-    let url_end = url
-        .path_segments()
-        .ok_or_else(|| "cannot be base")?
-        .last()
-        .ok_or("couldn't find last")?;
-
-    let cap = re.replace(
-        url_end,
-        if let Some(chapter) = chapter {
-            format!("${{name}}{}${{ext}}", chapter.to_string())
-        } else {
-            "${name}${chapter}${ext}".to_string()
-        }
-        .as_str(),
-    );
-
-    let mut url_mut = url.clone();
-    url_mut
-        .path_segments_mut()
-        .map_err(|_| "cannot be base")?
-        .pop()
-        .push(cap.as_ref());
-
-    Ok(url_mut)
+pub fn is_int(value: f64) -> bool {
+    (value.fract() < 1e-6) || ((1.0 - value.fract()) < 1e-6)
 }
 
-pub async fn get_chapter_info(url: String) -> Result<(Url, i32), Box<dyn Error>> {
-    let browser = Browser::default()?;
+pub fn create_folder(path: &Utf8Path) -> Result<(), Box<dyn Error>> {
+    if !path.exists() {
+        fs::create_dir_all(path)?;
+    }
+    Ok(())
+}
 
-    println!("start");
-    let tab = browser.new_tab()?;
+pub fn get_chapter_string(chapter: f64) -> String {
+    let is_point_chapter = !is_int(chapter);
 
-    tab.set_default_timeout(Duration::from_secs(4));
-    tab.navigate_to(url.as_str())?;
-
-    tab.wait_until_navigated()?;
-    println!("navigated");
-
-    let last_image = tab
-        .wait_for_element(
-            "div.ImageGallery > :nth-last-child(1 of .ng-scope) > div.ng-scope > img.img-fluid",
+    if is_point_chapter {
+        println!(
+            "{:0>4}.{}",
+            chapter.trunc(),
+            (chapter.fract() * 10.0).floor()
+        );
+        format!(
+            "{:0>4}.{}",
+            chapter.trunc(),
+            (chapter.fract() * 10.0).floor()
         )
-        .map_err(|err| format!("Cannot find the image element {:?}", err.to_string()))?;
+    } else {
+        format!("{:0>4}", chapter)
+    }
+}
 
-    let image = last_image
-        .get_attribute_value("src")
+pub fn write_file(path: &Utf8Path, content: Bytes) -> Result<(), Box<dyn Error>> {
+    let mut file = File::create(path)?;
+    file.write_all(&content)?;
+    Ok(())
+}
+
+pub fn zip_rename_delete(chapter_path: &Utf8Path, chapter_folder_name: &str) {
+    let zip_path = &chapter_path
+        .parent()
         .unwrap()
-        .ok_or("Image Not Found!".to_string())?;
-    println!("found image");
+        .join(format!("{}.zip", &chapter_folder_name));
+    let cbz_path = &chapter_path
+        .parent()
+        .unwrap()
+        .join(format!("{}.cbz", &chapter_folder_name));
 
-    let url = Url::parse(image.as_str())?;
-    let path_segments = &url.path_segments().ok_or("Cannot be base")?;
+    let _ = match zip_create_from_directory(
+        &zip_path.as_std_path().to_path_buf(),
+        &chapter_path.as_std_path().to_path_buf(),
+    ) {
+        Ok(()) => {}
+        Err(err) => panic!("[ERROR] Couldn't create zip {:?}", err),
+    };
 
-    let last_chapter = path_segments
-        .clone()
-        .last()
-        .ok_or("Last Page Not Found")?
-        .rsplit_once(&['.', '-'])
-        .ok_or("Couldn't find the chapter split")?
-        .0
-        .split("-")
-        .nth(1)
-        .ok_or("Couldn't find the chapter split")?
-        .parse::<i32>()?;
-    println!("found last_chapter");
+    let _ = match fs::rename(zip_path, cbz_path) {
+        Ok(()) => {}
+        Err(err) => panic!("[ERROR] Couldn't rename zip {:?}", err),
+    };
 
-    Ok((url, last_chapter))
+    let _ = match fs::remove_dir_all(chapter_path) {
+        Ok(()) => {}
+        Err(err) => panic!("[ERROR] Couldn't Delete Folder {:?}", err),
+    };
 }

@@ -1,9 +1,12 @@
 mod args;
+mod error_type;
+mod m4l;
 mod utils;
 
-pub use self::args::*;
-pub use self::utils::*;
+use m4l::download_all_chapters;
 use std::error::Error;
+
+pub use self::args::*;
 
 pub async fn manga_download(args: MangaDownArgs) -> Result<(), Box<dyn Error>> {
     let chapters = match parse_chapters(args.chapter) {
@@ -11,14 +14,8 @@ pub async fn manga_download(args: MangaDownArgs) -> Result<(), Box<dyn Error>> {
         Err(err) => return Err(err.into()),
     };
 
-    let first_chapter = chapters.get(0).copied();
+    // download_page(Utf8Path::new("./img.png"), &client, url).await?;
 
-    let url = get_chapter_link(&args.link, first_chapter)?;
-    println!("{}", url.to_string());
-
-    let (url, page) = get_chapter_info(url.to_string()).await?;
-
-    println!("{:?} {}", url.to_string(), page);
-
+    let _ = download_all_chapters(chapters, args.title, args.link).await;
     Ok(())
 }

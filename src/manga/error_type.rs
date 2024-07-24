@@ -7,10 +7,7 @@ pub enum DownloadChapterError {
     ChaterMayNotExist,
     CannotCreateFolder(String),
     CouldntRemoveFile(String),
-    CouldntParseUrl,
-    CouldntFlush,
     CouldntParseRegex(String),
-    CouldntReplaceChapter(String),
 }
 
 // Implement std::fmt::Display for AppError

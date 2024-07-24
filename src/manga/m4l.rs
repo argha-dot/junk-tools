@@ -1,10 +1,11 @@
 use crate::manga::{
     error_type::DownloadChapterError,
-    utils::{get_chapter_string, zip_rename_delete},
+    utils::{get_chapter_string, zip_rename_delete, SPINNER_LONG, SPINNER_SHORT},
 };
+use console::{style, Term};
+use indicatif::{ProgressBar, ProgressStyle};
 use regex::Regex;
-use std::io::Write;
-use std::{fs, io};
+use std::fs;
 
 use super::utils::{create_folder, is_int, write_file};
 
@@ -34,15 +35,35 @@ pub async fn download_all_chapters(
         let chapter_download = download_chapter(chapter, &client, manga_name.clone(), &url).await;
 
         if chapter_download.is_err_and(|x| x == DownloadChapterError::ChaterMayNotExist) {
+            println!(
+                "{} Possible Image Link Change, Getting New Link for {}",
+                style("[WARN]").yellow().bold(),
+                style(chapter).italic(),
+            );
             let new_link =
                 get_chapter_link(link.clone(), chapter).map_err(|err| err.to_string())?;
-            let (new_url, _) = get_chapter_info(new_link.clone()).await?;
+
+            let (new_url, _) = get_chapter_info(new_link.clone()).await.or_else(|err| {
+                println!(
+                    "{} Chapter {} may not exist",
+                    style("[ERROR]").red().bold(),
+                    style(chapter).italic().bold()
+                );
+                Err(err)
+            })?;
+            // let (new_url, _) = get_chapter_info(new_link.clone()).await?;
 
             let chapter_download =
                 download_chapter(chapter, &client, manga_name.clone(), &new_url).await;
 
             if chapter_download.is_ok() {
                 url = new_url
+            } else {
+                println!(
+                    "{} Chapter {} may not exist",
+                    style("[ERROR]").red().bold(),
+                    style(chapter).italic().bold()
+                );
             }
         }
     }
@@ -50,7 +71,6 @@ pub async fn download_all_chapters(
 }
 
 pub fn get_chapter_link(link: String, chapter: f64) -> Result<String, DownloadChapterError> {
-    println!("{:?}", chapter);
     let re = Regex::new(r"chapter-\d")
         .map_err(|err| DownloadChapterError::CouldntParseRegex(err.to_string()))?;
     let chapter_string = get_chapter_string(chapter);
@@ -62,24 +82,46 @@ pub fn get_chapter_link(link: String, chapter: f64) -> Result<String, DownloadCh
 
 pub async fn get_chapter_info(url: String) -> Result<(Url, i32), Box<dyn Error>> {
     let browser = Browser::default()?;
+    let term = Term::stdout();
+    let bar = ProgressBar::new_spinner();
+
+    bar.set_style(
+        ProgressStyle::with_template("{prefix:.bold.dim} {spinner:.blue}")
+            .unwrap()
+            .tick_strings(SPINNER_SHORT),
+    );
 
     let tab = browser.new_tab()?;
+    println!("{} Opened Browser", style("[1/3]").bold().dim());
 
     tab.set_default_timeout(Duration::from_secs(15));
+    println!("{} Opening Tab", style("[2/3]").bold().dim());
     tab.navigate_to(url.as_str())?;
+    term.clear_last_lines(1)?;
 
     tab.wait_until_navigated()?;
+    println!("{} Navigated to Tab", style("[2/3]").bold().dim());
+    bar.enable_steady_tick(Duration::from_millis(120));
+    bar.set_prefix("[3/3]");
 
     let last_image = tab
         .wait_for_element(
             "div.ImageGallery > :nth-last-child(1 of .ng-scope) > div.ng-scope > img.img-fluid",
         )
+        .or_else(|err| {
+            bar.finish_and_clear();
+            term.clear_last_lines(2)?;
+            Err(err)
+        })
         .map_err(|err| format!("Cannot find the image element {:?}", err.to_string()))?;
 
     let image = last_image
         .get_attribute_value("src")
         .unwrap()
         .ok_or("Image Not Found!".to_string())?;
+
+    bar.finish_and_clear();
+    term.clear_last_lines(3)?;
 
     let url = Url::parse(image.as_str())?;
     let path_segments = &url.path_segments().ok_or("Cannot be base")?;
@@ -135,29 +177,36 @@ pub async fn download_chapter(
     let should_continue = Arc::new(Mutex::new(true));
     let counter = Arc::new(Mutex::new(1));
 
-    io::stdout()
-        .flush()
-        .map_err(|_| DownloadChapterError::CouldntFlush)?;
-    print!("started chapter {chapter}: ");
+    let bar = ProgressBar::new_spinner();
+    bar.set_style(
+        ProgressStyle::with_template("{prefix:.blue.bold} {spinner:.blue} {wide_msg}")
+            .unwrap()
+            .tick_strings(SPINNER_LONG),
+    );
+
+    bar.set_prefix("[DOWNLOADING]");
     stream::iter(pages)
         .map(|i| {
             let url_file_string = format!("{}-{:0>3}.png", url_chapter_string, i);
 
             let url = match base_url.join(&url_file_string) {
                 Ok(url) => url,
-                Err(err) => panic!("[ERROR] Can't Get url {:?}", err),
+                Err(err) => panic!("[ERROR] Can't Get URL {:?}", err),
             };
             let file_path = chapter_path.join(format!("{:0>3}.png", i));
 
             let should_continue = should_continue.clone();
             let counter = counter.clone();
+            let bar = bar.clone();
 
             async move {
                 if *should_continue.lock().unwrap() {
                     match download_page(&file_path, client, url).await {
                         Ok(_) => {
                             let mut counter = counter.lock().unwrap();
-                            *counter += 1
+                            bar.inc(1);
+                            bar.set_message(format!("{}", *counter));
+                            *counter += 1;
                         }
                         Err(_) => {
                             let mut state = should_continue.lock().unwrap();
@@ -174,7 +223,6 @@ pub async fn download_chapter(
     zip_rename_delete(&chapter_path, &chapter_folder_name);
 
     if *counter.lock().unwrap() == 1 {
-        eprintln!("[ERROR] CHAPTER {} MAY NOT EXIST", chapter);
         let zip_path = &chapter_path
             .parent()
             .unwrap()
@@ -185,7 +233,13 @@ pub async fn download_chapter(
         return Err(DownloadChapterError::ChaterMayNotExist);
     }
 
-    println!("finished chapter: {chapter}");
+    bar.finish_and_clear();
+    println!(
+        "{} Chapter {: <4} ({: >4}) Pages",
+        style("[FINISHED]").green().bold(),
+        style(chapter).italic(),
+        style(*counter.lock().unwrap()).italic()
+    );
 
     Ok(())
 }

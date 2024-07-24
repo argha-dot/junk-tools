@@ -4,6 +4,32 @@ use std::fs;
 use std::{error::Error, fs::File, io::Write};
 use zip_extensions::zip_create_from_directory;
 
+pub const SPINNER_LONG: &'static [&'static str] = &[
+    "▐               ▌",
+    "▐=              ▌",
+    "▐==             ▌",
+    "▐===            ▌",
+    "▐ ===           ▌",
+    "▐  ===          ▌",
+    "▐   ===         ▌",
+    "▐    ===        ▌",
+    "▐     ===       ▌",
+    "▐      ===      ▌",
+    "▐       ===     ▌",
+    "▐        ===    ▌",
+    "▐         ===   ▌",
+    "▐          ===  ▌",
+    "▐           === ▌",
+    "▐            ===▌",
+    "▐             ==▌",
+    "▐              =▌",
+];
+
+pub const SPINNER_SHORT: &'static [&'static str] = &[
+    "[    ]", "[=   ]", "[==  ]", "[=== ]", "[====]", "[ ===]", "[  ==]", "[   =]", "[    ]",
+    "[   =]", "[  ==]", "[ ===]", "[====]", "[=== ]", "[==  ]", "[=   ]",
+];
+
 pub fn is_int(value: f64) -> bool {
     (value.fract() < 1e-6) || ((1.0 - value.fract()) < 1e-6)
 }

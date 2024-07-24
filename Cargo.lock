@@ -1141,6 +1141,7 @@ dependencies = [
  "bytes",
  "camino",
  "clap",
+ "console",
  "futures",
  "headless_chrome",
  "indicatif",

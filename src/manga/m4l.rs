@@ -237,8 +237,8 @@ pub async fn download_chapter(
     println!(
         "{} Chapter {: <4} ({: >4}) Pages",
         style("[FINISHED]").green().bold(),
-        style(chapter).italic(),
-        style(*counter.lock().unwrap()).italic()
+        style(chapter).green(),
+        style(*counter.lock().unwrap()).green()
     );
 
     Ok(())

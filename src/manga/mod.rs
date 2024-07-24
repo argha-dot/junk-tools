@@ -14,8 +14,6 @@ pub async fn manga_download(args: MangaDownArgs) -> Result<(), Box<dyn Error>> {
         Err(err) => return Err(err.into()),
     };
 
-    // download_page(Utf8Path::new("./img.png"), &client, url).await?;
-
-    let _ = download_all_chapters(chapters, args.title, args.link).await;
+    let _ = download_all_chapters(chapters, args.title, args.link.to_string()).await;
     Ok(())
 }

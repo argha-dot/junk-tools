@@ -9,11 +9,12 @@ use std::error::Error;
 pub use self::args::*;
 
 pub async fn manga_download(args: MangaDownArgs) -> Result<(), Box<dyn Error>> {
-    let chapters = match parse_chapters(args.chapter) {
-        Ok(chapters) => chapters,
-        Err(err) => return Err(err.into()),
-    };
+    // let chapters = match parse_chapters(args.chapters) {
+    //     Ok(chapters) => chapters,
+    //     Err(err) => return Err(err.into()),
+    // };
 
-    let _ = download_all_chapters(chapters, args.title, args.link.to_string()).await;
+    let _ =
+        download_all_chapters(args.chapters, args.title, args.link.to_string(), args.path).await;
     Ok(())
 }

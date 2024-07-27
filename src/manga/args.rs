@@ -1,4 +1,6 @@
-use clap::Args;
+use camino::Utf8PathBuf;
+use clap::{builder::ValueParser, Args};
+use regex::Regex;
 use url::Url;
 
 pub fn parse_chapters(chapters: Vec<String>) -> Result<Vec<f64>, String> {
@@ -34,15 +36,34 @@ pub fn parse_chapters(chapters: Vec<String>) -> Result<Vec<f64>, String> {
     Ok(parsed_chapters)
 }
 
+pub fn validate_url() -> ValueParser {
+    ValueParser::from(move |s: &str| -> Result<Url, String> {
+        let url = match Url::parse(s) {
+            Ok(url) => url,
+            Err(err) => return Err(err.to_string()),
+        };
+
+        let re = Regex::new(r"https:\/\/manga4life.com/read-online/([\w+-]+)chapter-(\d+).html")
+            .expect("a valid regex");
+        match re.is_match(s) {
+            true => Ok(url),
+            false => Err("Please Give a Manga4Life Link".into()),
+        }
+    })
+}
+
 #[derive(Debug, Args)]
 pub struct MangaDownArgs {
     /// The Title of the manga
     #[arg(short = 't', long = "title")]
-    pub title: String,
+    pub title: Option<String>,
     /// The Chapters to download
     #[arg(short = 'c', long = "chapter", value_delimiter = ',')]
-    pub chapter: Vec<String>,
+    pub chapters: Option<Vec<String>>,
     /// The Link
-    #[arg(short = 'l', long = "link", value_parser = clap::value_parser!(Url))]
+    #[arg(short = 'l', long = "link", value_parser = validate_url())]
     pub link: Url,
+    /// Output path
+    #[arg(short = 'o', long, default_value = "./")]
+    pub path: Utf8PathBuf,
 }

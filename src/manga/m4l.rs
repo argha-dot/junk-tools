@@ -1,5 +1,6 @@
 use crate::manga::{
     error_type::DownloadChapterError,
+    parse_chapters,
     utils::{get_chapter_string, zip_rename_delete, SPINNER_LONG, SPINNER_SHORT},
 };
 use console::{style, Term};
@@ -9,7 +10,7 @@ use std::fs;
 
 use super::utils::{create_folder, is_int, write_file};
 
-use camino::Utf8Path;
+use camino::{Utf8Path, Utf8PathBuf};
 use futures::{stream, StreamExt};
 use headless_chrome::Browser;
 use reqwest::Client;
@@ -23,16 +24,43 @@ use std::{
 use url::Url;
 
 pub async fn download_all_chapters(
-    chapters: Vec<f64>,
-    manga_name: String,
+    chapters: Option<Vec<String>>,
+    manga_name: Option<String>,
     link: String,
+    base_path: Utf8PathBuf,
 ) -> Result<(), Box<dyn Error>> {
     let client = Client::new();
 
-    let (mut url, _) = get_chapter_info(link.clone()).await?;
+    let (mut url, title, link_chapter) = get_chapter_info(link.clone()).await?;
+    let title = title
+        .strip_suffix("-")
+        .map(|str| str.replace("-", " "))
+        .expect("strip and split to work");
+
+    let chapters = match chapters {
+        Some(chapters) => match parse_chapters(chapters) {
+            Ok(chapters) => chapters,
+            Err(err) => return Err(err.into()),
+        },
+        None => {
+            vec![link_chapter]
+        }
+    };
+
+    let manga_name = match manga_name {
+        Some(manga_name) => manga_name,
+        None => title,
+    };
 
     for chapter in chapters {
-        let chapter_download = download_chapter(chapter, &client, manga_name.clone(), &url).await;
+        let chapter_download = download_chapter(
+            chapter,
+            &client,
+            manga_name.clone(),
+            &url,
+            base_path.clone(),
+        )
+        .await;
 
         if chapter_download.is_err_and(|x| x == DownloadChapterError::ChaterMayNotExist) {
             println!(
@@ -43,7 +71,7 @@ pub async fn download_all_chapters(
             let new_link =
                 get_chapter_link(link.clone(), chapter).map_err(|err| err.to_string())?;
 
-            let (new_url, _) = get_chapter_info(new_link.clone()).await.or_else(|err| {
+            let (new_url, _, _) = get_chapter_info(new_link.clone()).await.or_else(|err| {
                 println!(
                     "{} Chapter {} may not exist",
                     style("[ERROR]").red().bold(),
@@ -53,8 +81,14 @@ pub async fn download_all_chapters(
             })?;
             // let (new_url, _) = get_chapter_info(new_link.clone()).await?;
 
-            let chapter_download =
-                download_chapter(chapter, &client, manga_name.clone(), &new_url).await;
+            let chapter_download = download_chapter(
+                chapter,
+                &client,
+                manga_name.clone(),
+                &new_url,
+                base_path.clone(),
+            )
+            .await;
 
             if chapter_download.is_ok() {
                 url = new_url
@@ -71,7 +105,7 @@ pub async fn download_all_chapters(
 }
 
 pub fn get_chapter_link(link: String, chapter: f64) -> Result<String, DownloadChapterError> {
-    let re = Regex::new(r"chapter-\d")
+    let re = Regex::new(r"chapter-[\d]*")
         .map_err(|err| DownloadChapterError::CouldntParseRegex(err.to_string()))?;
     let chapter_string = get_chapter_string(chapter);
 
@@ -80,7 +114,7 @@ pub fn get_chapter_link(link: String, chapter: f64) -> Result<String, DownloadCh
         .to_string())
 }
 
-pub async fn get_chapter_info(url: String) -> Result<(Url, i32), Box<dyn Error>> {
+pub async fn get_chapter_info(url: String) -> Result<(Url, String, f64), Box<dyn Error>> {
     let browser = Browser::default()?;
     let term = Term::stdout();
     let bar = ProgressBar::new_spinner();
@@ -123,19 +157,20 @@ pub async fn get_chapter_info(url: String) -> Result<(Url, i32), Box<dyn Error>>
     bar.finish_and_clear();
     term.clear_last_lines(3)?;
 
-    let url = Url::parse(image.as_str())?;
-    let path_segments = &url.path_segments().ok_or("Cannot be base")?;
+    let page_url = Url::parse(image.as_str())?;
+    let re = Regex::new(r"([\w+-]+)chapter-(\d+)").expect("Regex to be valid");
 
-    let last_chapter = path_segments
-        .clone()
-        .last()
-        .ok_or("Last Page Not Found")?
-        .split(&['.', '-'])
-        .nth(1)
-        .ok_or("Couldn't find the chapter split")?
-        .parse::<i32>()?;
+    let caps = re.captures(url.as_str()).expect("To Capture Something");
 
-    Ok((url, last_chapter))
+    Ok((
+        page_url,
+        caps.get(1).unwrap().as_str().to_string(),
+        caps.get(2)
+            .unwrap()
+            .as_str()
+            .parse::<f64>()
+            .expect("Parsing Chapter to work"),
+    ))
 }
 
 pub async fn download_page(
@@ -157,6 +192,7 @@ pub async fn download_chapter(
     client: &Client,
     manga_name: String,
     base_url: &Url,
+    chapter_path: Utf8PathBuf,
 ) -> Result<(), DownloadChapterError> {
     let chapter_folder_name = if is_int(chapter) {
         format!("{} {}", manga_name, chapter.floor())
@@ -164,7 +200,7 @@ pub async fn download_chapter(
         format!("{} {}", manga_name, chapter)
     };
 
-    let chapter_path = Utf8Path::new("./")
+    let chapter_path = chapter_path
         .join(manga_name.as_str())
         .join(chapter_folder_name.as_str());
 

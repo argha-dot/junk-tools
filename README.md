@@ -19,7 +19,7 @@ junk joke --type <all | custom> --category <category> --blacklist <blacklist>
 
 ## Manga Downloader
 
-Downloads Manga from Manga4Life. Just open the manga and put the link in the args, along with chapters you want and prefered title for the manga, it will download the chapter in `*.cbz` format in the directory of the executable.
+Downloads Manga from Manga4Life. Just open the manga and put the link in the args, along with chapters you want and prefered title for the manga, it will download the chapter in `*.cbz` format in the directory of the executable if the path is not provided.
 
 You can download multiple chapters using a Comma Seperated List. Furthermore, to specify a range, you can use `..`.
 
@@ -28,7 +28,7 @@ For Example, `1..100,12.5,18.5` will download all chapters from 1 to 100 along w
 ### Usage
 
 ```bash
-junk md -t <title> -c <chapters> -l <link>
+junk md -t <title> -c <chapters> -l <link> -o <output-path>
 ```
 
 ## WIP Scroller

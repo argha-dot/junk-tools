@@ -34,6 +34,17 @@ pub fn is_int(value: f64) -> bool {
     (value.fract() < 1e-6) || ((1.0 - value.fract()) < 1e-6)
 }
 
+pub fn get_fractional(num: f64) -> u32 {
+    let x = num
+        .to_string()
+        .split(".")
+        .map(|s| s.parse::<u32>())
+        .collect::<Result<Vec<_>, _>>()
+        .expect("Split from middle");
+
+    x.get(1).expect("to second thing be there").to_owned()
+}
+
 pub fn create_folder(path: &Utf8Path) -> Result<(), Box<dyn Error>> {
     if !path.exists() {
         fs::create_dir_all(path)?;
@@ -45,16 +56,7 @@ pub fn get_chapter_string(chapter: f64) -> String {
     let is_point_chapter = !is_int(chapter);
 
     if is_point_chapter {
-        println!(
-            "{:0>4}.{}",
-            chapter.trunc(),
-            (chapter.fract() * 10.0).floor()
-        );
-        format!(
-            "{:0>4}.{}",
-            chapter.trunc(),
-            (chapter.fract() * 10.0).floor()
-        )
+        format!("{:0>4}.{}", chapter.trunc(), get_fractional(chapter))
     } else {
         format!("{:0>4}", chapter)
     }

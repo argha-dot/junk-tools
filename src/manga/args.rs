@@ -43,8 +43,9 @@ pub fn validate_url() -> ValueParser {
             Err(err) => return Err(err.to_string()),
         };
 
-        let re = Regex::new(r"https:\/\/manga4life.com/read-online/([\w+-]+)chapter-(\d+).html")
-            .expect("a valid regex");
+        let re =
+            Regex::new(r"https:\/\/manga4life.com/read-online/([\w+-]+)chapter-([\d\.]+).html")
+                .expect("a valid regex");
         match re.is_match(s) {
             true => Ok(url),
             false => Err("Please Give a Manga4Life Link".into()),

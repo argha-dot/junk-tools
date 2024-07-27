@@ -105,12 +105,12 @@ pub async fn download_all_chapters(
 }
 
 pub fn get_chapter_link(link: String, chapter: f64) -> Result<String, DownloadChapterError> {
-    let re = Regex::new(r"chapter-[\d]*")
+    let re = Regex::new(r"chapter-[\d\.]*\.")
         .map_err(|err| DownloadChapterError::CouldntParseRegex(err.to_string()))?;
     let chapter_string = get_chapter_string(chapter);
 
     Ok(re
-        .replace(link.as_str(), format!("chapter-{chapter_string}").as_str())
+        .replace(link.as_str(), format!("chapter-{chapter_string}.").as_str())
         .to_string())
 }
 
@@ -158,7 +158,7 @@ pub async fn get_chapter_info(url: String) -> Result<(Url, String, f64), Box<dyn
     term.clear_last_lines(3)?;
 
     let page_url = Url::parse(image.as_str())?;
-    let re = Regex::new(r"([\w+-]+)chapter-(\d+)").expect("Regex to be valid");
+    let re = Regex::new(r"([\w+-]+)chapter-([\d\.]+)\.").expect("Regex to be valid");
 
     let caps = re.captures(url.as_str()).expect("To Capture Something");
 
